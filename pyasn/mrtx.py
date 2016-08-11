@@ -110,11 +110,9 @@ Both version 1 & 2 TABLE_DUMPS are supported, as well as 32bit ASNs. IPv6 implem
     return results
 
 
-def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, debug_write_sets=False):
-    if IS_PYTHON2:
-        fw = open(out_text_file_name, 'wt')
-    else:
-        fw = open(out_text_file_name, 'wt', encoding='ASCII')
+def dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=False):
+    fw = StringIO()
+
     fw.write('; IP-ASN32-DAT file\n; Original file : %s\n' % orig_mrt_name)
     n4, n6 = 0, 0
     for prefix, origin in ipasn_data.items():
@@ -126,6 +124,17 @@ def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, de
         if not debug_write_sets and isinstance(origin, set):
             origin = list(origin)[0]  # get an AS randomly, or the only AS if just one, from the set
         fw.write('%s\t%s\n' % (prefix, origin))
+    return fw.getvalue()
+
+
+def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, debug_write_sets=False):
+    if IS_PYTHON2:
+        fw = open(out_text_file_name, 'wt')
+    else:
+        fw = open(out_text_file_name, 'wt', encoding='ASCII')
+
+    fw.write(dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets))
+
     fw.close()
 
 
@@ -152,7 +161,7 @@ def dump_prefixes_to_binary_file(ipasn_data, out_bin_file_name, orig_mrt_name, e
             origin = list(origin)[0]  # get an AS randomly, or the only AS if just one, from the set
         network, mask = prefix.split('/')
         assert ':' not in network   # TODO-IPv6: need more bytes here
-        fw.write(inet_aton(network)) 
+        fw.write(inet_aton(network))
         fw.write(pack('B', int(mask)))
         fw.write(pack('I', origin))
         n += 1
@@ -219,14 +228,14 @@ class MrtRecord:
         buf = f.read(mrt.data_len)  # read table-data
         assert len(buf) == mrt.data_len
         if mrt.type == MrtRecord.TYPE_TABLE_DUMP:
-            assert mrt.sub_type in (MrtRecord.T1_AFI_IPv4, MrtRecord.T1_AFI_IPv6)  
+            assert mrt.sub_type in (MrtRecord.T1_AFI_IPv4, MrtRecord.T1_AFI_IPv6)
             mrt.table = MrtTableDump1(buf, mrt.sub_type)
         elif mrt.type == MrtRecord.TYPE_TABLE_DUMP_V2:
             # only allow these types
             # T2_PEER_INDEX_TABLE provides BGP ID of the collector and list of peers; we don't use it
-            assert mrt.sub_type in (MrtRecord.T2_PEER_INDEX_TABLE, 
+            assert mrt.sub_type in (MrtRecord.T2_PEER_INDEX_TABLE,
                                     MrtRecord.T2_RIB_IPV4_UNICAST,
-                                    MrtRecord.T2_RIB_IPV6_UNICAST)  
+                                    MrtRecord.T2_RIB_IPV6_UNICAST)
             if mrt.sub_type in (MrtRecord.T2_RIB_IPV4_UNICAST, MrtRecord.T2_RIB_IPV6_UNICAST):
                 mrt.table = MrtTableDump2(buf, mrt.sub_type)
         else:
@@ -263,7 +272,7 @@ class MrtTableDump1:
 
     def __init__(self, buf, sub_type1):
         # TODO-IPv6: to implement. possibly need "QQ" in the unpack (16B prefix), and inet_ntop() after
-        assert sub_type1 == MrtRecord.T1_AFI_IPv4  
+        assert sub_type1 == MrtRecord.T1_AFI_IPv4
         self.view, self.seq, prefix, mask, self.status, self.orig_ts, self.peer_ip, self.peer_as, self.attr_len\
             = unpack('>HHIBBIIHH', buf[:22])
         self.s_prefix = "%s/%d" % (inet_ntoa(pack('>I', prefix)), mask)
@@ -303,13 +312,13 @@ class MrtTableDump2:
         self.seq, mask = unpack('>IB', buf[0:5])
         octets = (mask + 7) // 8
         if sub_type2 == MrtRecord.T2_RIB_IPV4_UNICAST:
-            assert octets <= 4  
+            assert octets <= 4
             padding = bytes(4-octets) if not IS_PYTHON2 else '\0'*(4-octets)
             s_prefix = inet_ntoa(buf[5:5+octets] + padding)  # faster than IPv4address class, not sure why
         elif sub_type2 == MrtRecord.T2_RIB_IPV6_UNICAST:
-            assert octets <= 16 
-            padding = bytes(16-octets) if not IS_PYTHON2 else '\0'*(16-octets)  
-            s_prefix = inet_ntop(AF_INET6, buf[5:5+octets] + padding) 
+            assert octets <= 16
+            padding = bytes(16-octets) if not IS_PYTHON2 else '\0'*(16-octets)
+            s_prefix = inet_ntop(AF_INET6, buf[5:5+octets] + padding)
 
         self.s_prefix = s_prefix + "/%d" % mask
         self.entry_count = unpack('>H', buf[5 + octets:7 + octets])[0]
