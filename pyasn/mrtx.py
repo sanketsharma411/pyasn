@@ -110,6 +110,17 @@ Both version 1 & 2 TABLE_DUMPS are supported, as well as 32bit ASNs. IPv6 implem
     return results
 
 
+def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, debug_write_sets=False):
+    if IS_PYTHON2:
+        fw = open(out_text_file_name, 'wt')
+    else:
+        fw = open(out_text_file_name, 'wt', encoding='ASCII')
+
+    fw.write(dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets))
+
+    fw.close()
+
+
 def dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=False):
     fw = StringIO()
 
@@ -125,18 +136,6 @@ def dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=False):
             origin = list(origin)[0]  # get an AS randomly, or the only AS if just one, from the set
         fw.write('%s\t%s\n' % (prefix, origin))
     return fw.getvalue()
-
-
-def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, debug_write_sets=False):
-    if IS_PYTHON2:
-        fw = open(out_text_file_name, 'wt')
-    else:
-        fw = open(out_text_file_name, 'wt', encoding='ASCII')
-
-    fw.write(dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets))
-
-    fw.close()
-
 
 
 def dump_prefixes_to_binary_file(ipasn_data, out_bin_file_name, orig_mrt_name, extra_comments=""):
