@@ -39,6 +39,7 @@ from socket import inet_ntoa, inet_aton, inet_ntop, AF_INET, AF_INET6
 from struct import unpack, pack
 from time import time, asctime
 from sys import stderr, version_info
+from StringIO import StringIO
 try:
     from collections import OrderedDict
 except:
@@ -116,10 +117,10 @@ def dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, de
     else:
         fw = open(out_text_file_name, 'wt', encoding='ASCII')
 
-    fw.write(dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets))
+    text_prefixes = dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets)
+    fw.write(text_prefixes)
 
     fw.close()
-
 
 def dump_prefixes_to_text(ipasn_data, orig_mrt_name, debug_write_sets=False):
     fw = StringIO()

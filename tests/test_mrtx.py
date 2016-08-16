@@ -24,6 +24,7 @@ from pyasn.mrtx import *
 import bz2
 from os import path
 import logging
+import mock
 
 RIB_TD2_LINE_ERROR_PARTDUMP_PATH = path.join(path.dirname(__file__), "../data/bview.20140112.1600_3samples.bz2")
 RIB_TD1_PARTDUMP_PATH = path.join(path.dirname(__file__), "../data/rib.20080501.0644_firstMB.bz2")
@@ -40,7 +41,7 @@ TMP_TD2_IPASN6_PATH = path.join(path.dirname(__file__), "ipasn6_td2_test_dat.tmp
 
 
 class TestMrtx(TestCase):
-    
+
     def test_mrt_table_dump_v2(self):
         """
             Tests pyasn.mrtx internal classes by converting start of an RIB TD2 file
@@ -284,7 +285,7 @@ class TestMrtx(TestCase):
         for prefix in ipasndat_v12:
             self.assertTrue(prefix in converted, msg="Prefix %s missing from new converter output" % prefix)
 
-    
+
     def test_mrt6_table_dump_v2(self):
         """
             Tests pyasn.mrtx internal classes by converting start of an RIB6 TD2 file (IPv6)
@@ -296,22 +297,22 @@ class TestMrtx(TestCase):
         self.assertEqual(mrt.type, MrtRecord.TYPE_TABLE_DUMP_V2)
         self.assertEqual(mrt.sub_type, MrtRecord.T2_PEER_INDEX_TABLE)
         self.assertEqual(mrt.ts, 1446357600)
-        self.assertEqual(mrt.data_len, 733) 
+        self.assertEqual(mrt.data_len, 733)
         self.assertEqual(mrt.table, None)
 
-        # second record 
+        # second record
         mrt = MrtRecord.next_dump_table_record(f)
         self.assertEqual(mrt.type, MrtRecord.TYPE_TABLE_DUMP_V2)
         self.assertEqual(mrt.sub_type, MrtRecord.T2_RIB_IPV6_UNICAST)
         self.assertEqual(mrt.ts, 1446357600)
-        self.assertEqual(mrt.data_len, 1741)  
+        self.assertEqual(mrt.data_len, 1741)
         self.assertTrue(isinstance(mrt.table, MrtTableDump2))
         self.assertEqual(mrt.table_seq, 0)
-        self.assertEqual(mrt.prefix, "2001::/32")   
-        self.assertEqual(mrt.table.entry_count, 24)  
+        self.assertEqual(mrt.prefix, "2001::/32")
+        self.assertEqual(mrt.table.entry_count, 24)
         entry = mrt.table.entries[0]
-        self.assertEqual(entry.attr_len, 85) 
-        self.assertEqual(entry.peer, 10) 
+        self.assertEqual(entry.attr_len, 85)
+        self.assertEqual(entry.peer, 10)
         self.assertEqual(entry.orig_ts, 1446348241)
         self.assertEqual(entry.attrs[0].bgp_type, 1)
         self.assertEqual(entry.attrs[1].bgp_type, BgpAttribute.ATTR_AS_PATH)
@@ -321,8 +322,8 @@ class TestMrtx(TestCase):
         self.assertTrue(isinstance(attr.path_detail(), BgpAttribute.BgpAttrASPath))
         aspath = attr.path_detail()
         self.assertEqual(len(aspath.pathsegs), 1)
-        self.assertEqual(str(aspath.pathsegs[0]), "sequence[3257, 1103, 1101]")  
-            # HA can't figure out if 1101 or this path sequence is correct 
+        self.assertEqual(str(aspath.pathsegs[0]), "sequence[3257, 1103, 1101]")
+            # HA can't figure out if 1101 or this path sequence is correct
         self.assertEqual(aspath.origin_as, 1101)
         self.assertEqual(mrt.as_path, aspath)
 
@@ -331,10 +332,10 @@ class TestMrtx(TestCase):
         self.assertTrue(isinstance(mrt.table, MrtTableDump2))
         self.assertEqual(mrt.data_len, 1724)
         self.assertEqual(mrt.table_seq, 1)
-        self.assertEqual(mrt.prefix, "2001:4:112::/48")  
-        self.assertEqual(mrt.table.entry_count, 23)  
+        self.assertEqual(mrt.prefix, "2001:4:112::/48")
+        self.assertEqual(mrt.table.entry_count, 23)
         entry = mrt.table.entries[0]
-        self.assertEqual(entry.attr_len, 87) 
+        self.assertEqual(entry.attr_len, 87)
         self.assertEqual(entry.peer, 10)
         self.assertEqual(entry.attrs[0].bgp_type, 1)
         self.assertEqual(entry.attrs[1].bgp_type, BgpAttribute.ATTR_AS_PATH)
@@ -344,12 +345,12 @@ class TestMrtx(TestCase):
         self.assertTrue(isinstance(attr.path_detail(), BgpAttribute.BgpAttrASPath))
         aspath = attr.path_detail()
         self.assertEqual(len(aspath.pathsegs), 1)
-        self.assertEqual(str(aspath.pathsegs[0]), "sequence[3257, 1103, 112]") 
+        self.assertEqual(str(aspath.pathsegs[0]), "sequence[3257, 1103, 112]")
         self.assertEqual(aspath.origin_as, 112)
         self.assertEqual(mrt.as_path, aspath)
 
         assert_results = { # chosen from file; randomly did WHOIS lookups on prefixes; correct
-                        "2001:504:2e::/48": 10578,  
+                        "2001:504:2e::/48": 10578,
                         "2001:57a:e030::/45": 22773,
                         "2001:590:1800::/38": 4436,
                         "2001:67c:368::/48": 12509,
@@ -428,7 +429,7 @@ class TestMrtx(TestCase):
                         "2a04:e4c0:14::/48": 36692,
                         "2a05:d880:1::/48": 43066,
                         "2a06:9800::/29": 6908,
-                        }  
+                        }
 
         for seq in range(2, 2000):
             mrt = MrtRecord.next_dump_table_record(f)
@@ -440,7 +441,7 @@ class TestMrtx(TestCase):
             self.assertTrue(origin)  # an integer or set!
             if prefix in assert_results:
                 self.assertEqual(assert_results[prefix], origin, "error in origin for prefix: %s" % prefix)
-            
+
 
     def test_converter_full_v2_ip6(self):
         """
@@ -456,6 +457,7 @@ class TestMrtx(TestCase):
         with self.assertRaises(IndexError):
             _ = parse_mrt_file(bz2.BZ2File(RIB_TD2_LINE_ERROR_PARTDUMP_PATH))
 
+
     def test_read_all_line_on_single_error_with_boolean_true(self):
         """
             Tests pyasn.mrtx.parse_mrt_file() with skip_record_on_error set to True
@@ -463,3 +465,28 @@ class TestMrtx(TestCase):
         res = parse_mrt_file(bz2.BZ2File(RIB_TD2_LINE_ERROR_PARTDUMP_PATH), skip_record_on_error=True)
         self.assertEqual(len(res), 2)
 
+
+    def test_dump_prefixes_to_text_file(self):
+        """
+            Tests pyasn.mrtx.dump_prefixes_to_text_file() to check if it correctly calls dump_prefixes_to_text
+        """
+        ipasn_data = 'ipasn_data'
+        out_text_file_name = 'out_text_file_name'
+        orig_mrt_name = 'orig_mrt_name'
+        dummy_text_prefixes = 'dummy_text_prefixes'
+        debug_write_sets = True
+        mock_open = mock.mock_open()
+        with \
+                mock.patch('pyasn.mrtx.open', mock_open, create=True) as m, \
+                mock.patch('pyasn.mrtx.dump_prefixes_to_text', return_value=dummy_text_prefixes) as mock_dump_prefixes_to_text:
+
+            dump_prefixes_to_text_file(ipasn_data, out_text_file_name, orig_mrt_name, debug_write_sets)
+
+            m.assert_called_once_with(out_text_file_name, 'wt')
+
+            mock_dump_prefixes_to_text.assert_called_once_with(ipasn_data, orig_mrt_name, debug_write_sets=debug_write_sets )
+
+            handle = m()
+            handle.write.assert_called_once_with(dummy_text_prefixes)
+
+            handle.close.assert_called_once_with()
